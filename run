@@ -1,0 +1,40 @@
+#!/usr/bin/bash
+
+# change directory
+if [ ! -d $1 ]
+then
+    echo "[!] '$1' not a directory or it doesn't exists"
+    exit
+fi
+
+cd $1
+
+# see if 'build' directory exists
+if [ ! -e "CMakeLists.txt" ]
+then
+    echo "[!] '$1' doesn't contain a 'CMakeLists.txt' file"
+    exit
+fi
+
+# see if 'build' directory exists
+build="build"
+
+if [ ! -e "$build" ] || [ ! -d "$build" ]
+then
+    mkdir $build
+fi
+
+cd build
+
+cmake ..
+
+make
+
+# if the return code is 0, then it is safe to try to run the program
+if [ $? -eq 0 ] && [[ $2 != "" ]]
+then
+    echo "----------------------------------------------"
+    ./$2
+    echo "----------------------------------------------"
+    echo "[Process finished, $?]"
+fi
