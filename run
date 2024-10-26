@@ -1,13 +1,13 @@
 #!/usr/bin/bash
 
 # change directory
-if [ ! -d $1 ]
+if [ ! -d tools/$1 ]
 then
     echo "[!] '$1' not a directory or it doesn't exists"
     exit
 fi
 
-cd $1
+cd tools/$1
 
 # see if 'build' directory exists
 if [ ! -e "CMakeLists.txt" ]
@@ -34,7 +34,7 @@ make
 if [ $? -eq 0 ] && [[ $2 != "" ]]
 then
     echo "----------------------------------------------"
-    ./$2
+    ./$2 $@
     echo "----------------------------------------------"
     echo "[Process finished, $?]"
 fi

@@ -1,6 +1,8 @@
 #include <iostream>
 #include <asio.hpp>
 #include <regex>
+#include <cstring>
+#include <fstream>
 
 // make sure to use standalone ASIO lib (doesnt depend on boost framework)
 #define ASIO_STANDALONE 1
@@ -44,10 +46,9 @@ namespace logging {
 namespace utils
 {
     using asio::ip::tcp;
+    using lists = std::vector<std::string>;
 
     namespace dir_enum {
-        using paths_t = std::vector<std::string>;
-
         int exists(std::string &server, std::string &path) {
             // error handling
             asio::error_code err_code;
@@ -106,7 +107,7 @@ namespace utils
 
         }
     
-        void enumerate(std::string &server, paths_t &paths) {
+        void enumerate(std::string &server, utils::lists &paths) {
             for (std::string &dir : paths) {
                 int sts_code = exists(server, dir);
                 logging::log_request_code(sts_code, server + "/" + dir);
@@ -114,12 +115,82 @@ namespace utils
         }
 
     }
+
+    lists read_file_and_split(std::string file_path, std::string sep = "\n") {
+        std::ifstream file(file_path);
+        lists tokens = {};
+
+        if (!file.is_open()) {
+            logging::print(file_path + " word list file couldn't be opened!");
+            return tokens;
+        }
+
+        std::string file_content((std::istreambuf_iterator<char>(file)),
+                                    std::istreambuf_iterator<char>());
+
+        file.close();
+
+        size_t start = 0;
+        size_t end = file_content.find(sep, start);
+
+        while (end != std::string::npos) {
+            tokens.push_back(file_content.substr(start, end - start));
+            start = end + sep.length();
+            end = file_content.find(sep, start);
+        }
+
+        tokens.push_back(file_content.substr(start));
+
+        return tokens;   
+    }
+
 }
 
-int main() {
-    std::string server = "scanme.nmap.org";
-    utils::dir_enum::paths_t paths = {"admin", "login", "images", "user"};
+int main(int argc, char* argv[]) {
+    
+    if (argc < 2) {
+        logging::print_help();
+        std::cout <<  argc << "mm\n";
+        return 0;
+    }
 
-    utils::dir_enum::enumerate(server, paths);
+    std::string arg = argv[1];
+
+    if (arg == "--help" || arg == "-h") {
+        logging::print_help();
+        return 0;
+
+    } else {
+        std::string url = "";
+        std::string word_lists_path = "";
+        std::string separator = "\n";
+
+        for (int i = 0; i < argc; i++) {
+            std::string current_arg = argv[i];
+            bool next_is_valid = i < argc - 1 && strncmp(argv[i+1], "-", 1) != 0;
+
+            if (next_is_valid && (current_arg == "--url" || current_arg == "-u")) {
+                url = argv[i+1];
+            } else if (next_is_valid && (current_arg == "--wordlist" || current_arg == "-w")) {
+                word_lists_path = argv[i+1];
+            } else if (next_is_valid && (current_arg == "--wordlist-sep" || current_arg == "-ws")) {
+                separator = argv[i+1];
+            }
+        }
+
+        if (url.empty() || word_lists_path.empty()) {
+            logging::print_help();
+
+            return 0;
+        }
+
+        if (arg == "dir") {
+            logging::print("directory enumeration ...");
+            utils::lists dirs = utils::read_file_and_split(word_lists_path, separator);
+            utils::dir_enum::enumerate(url, dirs);
+        }
+
+    }
+
     return 0;
 }
